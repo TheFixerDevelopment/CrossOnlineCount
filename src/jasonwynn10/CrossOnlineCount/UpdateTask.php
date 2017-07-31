@@ -2,6 +2,7 @@
 namespace jasonwynn10\CrossOnlineCount;
 
 use jasonwynn10\CrossOnlineCount\libs\MinecraftQuery;
+use jasonwynn10\CrossOnlineCount\libs\MinecraftQueryException;
 use pocketmine\plugin\Plugin;
 use pocketmine\scheduler\PluginTask;
 
@@ -17,15 +18,25 @@ class UpdateTask extends PluginTask {
 	}
 	public function onRun(int $currentTick) {
 		foreach($this->arr as $eid => $ip) {
+			if(empty($ip)) {
+				unset($this->arr[$eid]);
+				continue;
+			}
 			$server = explode(":", $ip);
-			$this->query->Connect($server[0], $server[1]);
-			if(isset($this->query->GetInfo()["numplayers"])) {
-				$online = $this->query->GetInfo()["numplayers"];
+			try{
+				$this->query->Connect($server[0], $server[1]);
+			}catch(\Exception $e) {
+				$this->getOwner()->getLogger()->error($e->getMessage());
 			}
-			if(isset($this->query->GetInfo()["maxplayers"])) {
-				$maxplayers = $this->query->GetInfo()["maxplayers"];
-			}
+			$online = $this->query->GetInfo()["numplayers"] ?? 0;
 
+			$entity = $this->getOwner()->getServer()->findEntity($eid);
+
+			$lines = explode("\n", $entity->getNameTag());
+			$lines[0] = $online." Online";
+			$nametag = implode("\n", $lines);
+
+			$entity->setNameTag($nametag);
 		}
 	}
 }
