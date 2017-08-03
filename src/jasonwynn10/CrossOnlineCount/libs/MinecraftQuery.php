@@ -33,7 +33,7 @@ class MinecraftQuery
 		}
 		if( $ResolveSRV )
 		{
-			$this->ResolveSRV( $Ip, $Port );
+			$this->ResolveSRV( $Ip );
 		}
 		$this->Socket = @FSockOpen( 'udp://' . $Ip, (int)$Port, $ErrNo = null, $ErrStr = null, $Timeout );
 		if( $ErrNo || $this->Socket === false )
@@ -192,9 +192,8 @@ class MinecraftQuery
 	}
 	/**
 	 * @param string $Address
-	 * @param int $Port
 	 */
-	private function ResolveSRV( string &$Address, int &$Port )
+	private function ResolveSRV( string &$Address)
 	{
 		if( ip2long( $Address ) !== false )
 		{
