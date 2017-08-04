@@ -86,6 +86,11 @@ class Main extends PluginBase implements Listener {
 					$nametag = implode("\n", $lines);
 
 					$entity->setNameTag($nametag);
+					return;
+				}
+				$lines = explode("\n", $entity->getNameTag());
+				if($this->isValidIP($lines[0]) or $this->is_valid_domain_name($lines[0])) { // this is for if the ip/port needs changed
+					$entity->namedtag->server = new StringTag("server", $lines[0]);
 				}
 			}
 		}
