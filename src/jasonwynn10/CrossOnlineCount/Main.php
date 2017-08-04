@@ -1,7 +1,6 @@
 <?php
 namespace jasonwynn10\CrossOnlineCount;
 
-use libpmquery\PmQueryException;
 use pocketmine\event\Listener;
 use pocketmine\nbt\tag\StringTag;
 use pocketmine\plugin\PluginBase;
@@ -11,6 +10,7 @@ use slapper\events\SlapperCreationEvent;
 use slapper\events\SlapperDeletionEvent;
 
 use libpmquery\PMQuery;
+use libpmquery\PmQueryException;
 
 class Main extends PluginBase implements Listener {
 
@@ -68,17 +68,17 @@ class Main extends PluginBase implements Listener {
 			foreach($level->getEntities() as $entity) {
 				if(isset($entity->namedtag->server)) {
 					$server = explode(":", $entity->namedtag->server->getValue());
-					try{
+					try {
 						$queryData = PMQuery::query($server[0], $server[1]);
 						$online = (int) $queryData['num'];
 
 						$lines = explode("\n", $entity->getNameTag());
 						$lines[0] = TextFormat::YELLOW.$online." Online".TextFormat::WHITE;
 						$nametag = implode("\n", $lines);
-
 						$entity->setNameTag($nametag);
 					}catch(PmQueryException $e) {
 						$this->getLogger()->logException($e);
+
 						$lines = explode("\n", $entity->getNameTag());
 						$lines[0] = TextFormat::DARK_RED."Server Offline".TextFormat::WHITE;
 						$nametag = implode("\n", $lines);
