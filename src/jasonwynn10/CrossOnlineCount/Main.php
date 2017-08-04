@@ -71,12 +71,11 @@ class Main extends PluginBase implements Listener {
 
 					$queryData = MCPEQuery::query($server[0], $server[1]);
 					if(isset($queryData['error'])) {
-						$this->getLogger()->error("Query Failed!");
 						$lines = explode("\n", $entity->getNameTag());
 						$lines[0] = TextFormat::DARK_RED."Server Offline".TextFormat::WHITE;
 						$nametag = implode("\n", $lines);
 						$entity->setNameTag($nametag);
-						$this->getLogger()->error($queryData['error']);
+						$this->getLogger()->debug($queryData['error']);
 						return;
 					}
 					$online = (int) $queryData['num'];
