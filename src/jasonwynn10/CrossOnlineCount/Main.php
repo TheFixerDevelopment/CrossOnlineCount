@@ -1,6 +1,7 @@
 <?php
 namespace jasonwynn10\CrossOnlineCount;
 
+use libpmquery\PmQueryException;
 use pocketmine\event\Listener;
 use pocketmine\nbt\tag\StringTag;
 use pocketmine\plugin\PluginBase;
@@ -9,7 +10,7 @@ use pocketmine\utils\TextFormat;
 use slapper\events\SlapperCreationEvent;
 use slapper\events\SlapperDeletionEvent;
 
-use jasonwynn10\CrossOnlineCount\libs\MCPEQuery;
+use libpmquery\PMQuery;
 
 class Main extends PluginBase implements Listener {
 
@@ -56,7 +57,6 @@ class Main extends PluginBase implements Listener {
 		$entity = $ev->getEntity();
 		if(isset($entity->namedtag->server)) {
 			unset($entity->namedtag->server);
-			echo "deleted {$entity->getId()}\n";
 		}
 	}
 
@@ -68,29 +68,23 @@ class Main extends PluginBase implements Listener {
 			foreach($level->getEntities() as $entity) {
 				if(isset($entity->namedtag->server)) {
 					$server = explode(":", $entity->namedtag->server->getValue());
+					try{
+						$queryData = PMQuery::query($server[0], $server[1]);
+						$online = (int) $queryData['num'];
 
-					$queryData = MCPEQuery::query($server[0], $server[1]);
-					if(isset($queryData['error'])) {
+						$lines = explode("\n", $entity->getNameTag());
+						$lines[0] = TextFormat::YELLOW.$online." Online".TextFormat::WHITE;
+						$nametag = implode("\n", $lines);
+
+						$entity->setNameTag($nametag);
+					}catch(PmQueryException $e) {
+						$this->getLogger()->logException($e);
 						$lines = explode("\n", $entity->getNameTag());
 						$lines[0] = TextFormat::DARK_RED."Server Offline".TextFormat::WHITE;
 						$nametag = implode("\n", $lines);
 						$entity->setNameTag($nametag);
-						$this->getLogger()->debug($queryData['error']);
-						return;
 					}
-					$online = (int) $queryData['num'];
-
-					$lines = explode("\n", $entity->getNameTag());
-					$lines[0] = TextFormat::YELLOW.$online." Online".TextFormat::WHITE;
-					$nametag = implode("\n", $lines);
-
-					$entity->setNameTag($nametag);
-					return;
 				}
-				#$lines = explode("\n", $entity->getNameTag());
-				#if($this->isValidIP($lines[0]) or $this->is_valid_domain_name($lines[0])) { // this is for if the ip/port needs changed
-				#	$entity->namedtag->server = new StringTag("server", $lines[0]);
-				#}
 			}
 		}
 	}
