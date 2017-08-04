@@ -3,4 +3,7 @@ projects:
   CrossOnlineCount:
     path: ""
     icon: icon.jpg
+    libs:
+      - src: jasonwynn10/libpmquery/libpmquery
+        version: ^0.0.1
 ...
