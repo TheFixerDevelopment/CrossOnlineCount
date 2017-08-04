@@ -1,43 +1,32 @@
 <?php
 namespace jasonwynn10\CrossOnlineCount;
 
-use jasonwynn10\CrossOnlineCount\libs\MCPEQuery;
 use pocketmine\event\Listener;
 use pocketmine\nbt\tag\StringTag;
 use pocketmine\plugin\PluginBase;
+use pocketmine\utils\TextFormat;
 
 use slapper\events\SlapperCreationEvent;
 use slapper\events\SlapperDeletionEvent;
 
+use jasonwynn10\CrossOnlineCount\libs\MCPEQuery;
 
 class Main extends PluginBase implements Listener {
-	/** @var string[] $arr */
-	private $arr = [];
 
 	public function onEnable() {
-		foreach($this->getServer()->getLevels() as $level) {
-			if(!$level->isClosed()) {
-				foreach($level->getEntities() as $entity) {
-					if(isset($entity->namedtag->server)) {
-						/** @var string $ip */
-						$ip = $entity->namedtag->server->getValue();
-						$this->arr[$entity->getId()] = $ip;
-					}
-				}
-			}
-		}
-		$this->getServer()->getScheduler()->scheduleRepeatingTask(new UpdateTask($this), 5); // update tags every 5 ticks
+		$this->getServer()->getScheduler()->scheduleRepeatingTask(new UpdateTask($this), 5); // server updates query data every 5 ticks
 		$this->getServer()->getPluginManager()->registerEvents($this, $this);
 	}
 
 	public function onDisable() {
-		foreach($this->arr as $eid => $ip) {
-			$entity = $this->getServer()->findEntity($eid);
-			if(isset($entity->namedtag->server)) {
-				$lines = explode("\n", $entity->getNameTag());
-				$lines[0] = $entity->namedtag->server->getValue();
-				$nametag = implode("\n", $lines);
-				$entity->setNameTag($nametag);
+		foreach($this->getServer()->getLevels() as $level) {
+			foreach($level->getEntities() as $entity) {
+				if(isset($entity->namedtag->server)) {
+					$lines = explode("\n", $entity->getNameTag());
+					$lines[0] = $entity->namedtag->server->getValue();
+					$nametag = implode("\n", $lines);
+					$entity->setNameTag($nametag);
+				}
 			}
 		}
 	}
@@ -50,14 +39,11 @@ class Main extends PluginBase implements Listener {
 	public function onSlapperCreate(SlapperCreationEvent $ev) {
 		$entity = $ev->getEntity();
 		$lines = explode("\n", $entity->getNameTag());
-		if(preg_match("/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})/", $lines[0], $matches) == 1) {
-			if(isset($matches[0])) {
-				$entity->namedtag->server = new StringTag("server", $lines[0]);
-				$this->arr[$entity->getId()] = $lines[0];
-				$this->update();
-			}else{
-				$this->getLogger()->debug("regex failed");
-			}
+		if($this->isValidIP($lines[0]) or $this->is_valid_domain_name($lines[0])) {
+			$entity->namedtag->server = new StringTag("server", $lines[0]);
+			$this->update();
+		}else{
+			$this->getLogger()->debug("Regex failed on entity {$entity->getId()}");
 		}
 	}
 
@@ -68,41 +54,63 @@ class Main extends PluginBase implements Listener {
 	 */
 	public function onSlapperDelete(SlapperDeletionEvent $ev) {
 		$entity = $ev->getEntity();
-		if(isset($this->arr[$entity->getId()])) {
-			unset($this->arr[$entity->getId()]);
-		}
 		if(isset($entity->namedtag->server)) {
 			unset($entity->namedtag->server);
+			echo "deleted {$entity->getId()}\n";
 		}
-		$this->update();
 	}
 
 	/**
 	 * @api
 	 */
 	public function update() {
-		foreach($this->arr as $eid => $ip) {
-			$entity = $this->getServer()->findEntity($eid);
-			if(empty($ip)) {
-				unset($this->arr[$eid]);
-				unset($entity->namedtag->server);
-				continue;
+		foreach($this->getServer()->getLevels() as $level) {
+			foreach($level->getEntities() as $entity) {
+				if(isset($entity->namedtag->server)) {
+					$server = explode(":", $entity->namedtag->server->getValue());
+
+					$queryData = MCPEQuery::query($server[0], $server[1]);
+					if(isset($queryData['error'])) {
+						$this->getLogger()->error("Query Failed!");
+						$lines = explode("\n", $entity->getNameTag());
+						$lines[0] = TextFormat::DARK_RED."Server Offline".TextFormat::WHITE;
+						$nametag = implode("\n", $lines);
+						$entity->setNameTag($nametag);
+						$this->getLogger()->error($queryData['error']);
+						return;
+					}
+					$online = (int) $queryData['num'];
+
+					$lines = explode("\n", $entity->getNameTag());
+					$lines[0] = TextFormat::YELLOW.$online." Online".TextFormat::WHITE;
+					$nametag = implode("\n", $lines);
+
+					$entity->setNameTag($nametag);
+				}
 			}
-			$server = explode(":", $ip);
-
-			$queryData = MCPEQuery::query($server[0], $server[1]);
-			if(isset($queryData['error'])) {
-				$this->getLogger()->error("Query Failed!");
-				$this->getLogger()->error($queryData['error']);
-				return;
-			}
-			$online = (int) $queryData['num'];
-
-			$lines = explode("\n", $entity->getNameTag());
-			$lines[0] = $online." Online";
-			$nametag = implode("\n", $lines);
-
-			$entity->setNameTag($nametag);
 		}
+	}
+
+	/**
+	 * @api
+	 *
+	 * @param string $domain_name
+	 *
+	 * @return bool
+	 */
+	public function is_valid_domain_name(string $domain_name) {
+		return (preg_match("/^([a-z\d](-*[a-z\d])*)(\.([a-z\d](-*[a-z\d])*))*$/i", $domain_name) //valid chars check
+		        and preg_match("/^.{1,253}$/", $domain_name) //overall length check
+		        and preg_match("/^[^\.]{1,63}(\.[^\.]{1,63})*$/", $domain_name)); //length of each label
+	}
+	/**
+	 * @api
+	 *
+	 * @param string $ip
+	 *
+	 * @return bool
+	 */
+	public function isValidIP(string $ip) {
+		return (preg_match("/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d{1,5})/", $ip) !== false);
 	}
 }

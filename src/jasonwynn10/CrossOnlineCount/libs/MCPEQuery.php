@@ -39,10 +39,10 @@ class MCPEQuery
 		fclose($socket);
 
 		if (empty($response) || $response === false) {
-			return ['error' => 'server do not answer'];
+			return ['error' => 'Server failed to respond'];
 		}
 		if (substr($response, 0, 1) !== "\x1C") {
-			return ['error' => 'error'];
+			return ['error' => 'Unknown Error'];
 		}
 
 		//        $firstPart = substr($response, 0, 16);
