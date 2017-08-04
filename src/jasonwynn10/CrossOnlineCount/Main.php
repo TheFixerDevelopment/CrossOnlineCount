@@ -1,6 +1,7 @@
 <?php
 namespace jasonwynn10\CrossOnlineCount;
 
+use jasonwynn10\CrossOnlineCount\libs\MCPEQuery;
 use pocketmine\event\Listener;
 use pocketmine\nbt\tag\StringTag;
 use pocketmine\plugin\PluginBase;
@@ -8,17 +9,10 @@ use pocketmine\plugin\PluginBase;
 use slapper\events\SlapperCreationEvent;
 use slapper\events\SlapperDeletionEvent;
 
-use jasonwynn10\CrossOnlineCount\libs\MinecraftQuery;
 
 class Main extends PluginBase implements Listener {
-	/** @var MinecraftQuery $Query */
-	private $query;
 	/** @var string[] $arr */
 	private $arr = [];
-
-	public function onLoad(){
-		$this->query = new MinecraftQuery();
-	}
 
 	public function onEnable() {
 		foreach($this->getServer()->getLevels() as $level) {
@@ -88,19 +82,21 @@ class Main extends PluginBase implements Listener {
 	 */
 	public function update() {
 		foreach($this->arr as $eid => $ip) {
+			$entity = $this->getServer()->findEntity($eid);
 			if(empty($ip)) {
 				unset($this->arr[$eid]);
+				unset($entity->namedtag->server);
 				continue;
 			}
 			$server = explode(":", $ip);
-			try{
-				$this->query->Connect($server[0], $server[1]);
-			}catch(\Exception $e) {
-				$this->getLogger()->error($e->getMessage());
-			}
-			$online = $this->query->GetInfo()["numplayers"] ?? 0;
 
-			$entity = $this->getServer()->findEntity($eid);
+			$queryData = MCPEQuery::query($server[0], $server[1]);
+			if(isset($queryData['error'])) {
+				$this->getLogger()->error("Query Failed!");
+				$this->getLogger()->error($queryData['error']);
+				return;
+			}
+			$online = (int) $queryData['num'];
 
 			$lines = explode("\n", $entity->getNameTag());
 			$lines[0] = $online." Online";
