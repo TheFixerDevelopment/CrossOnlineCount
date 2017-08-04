@@ -13,7 +13,7 @@ class MCPEQuery
 	 * @param int $port
 	 * @param int $timeout
 	 *
-	 * @return array
+	 * @return string[]
 	 */
 	static public function query(string $host, int $port, int $timeout = 2)
 	{
