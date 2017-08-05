@@ -1,10 +1,10 @@
 <?php
 namespace jasonwynn10\CrossOnlineCount;
 
-use pocketmine\scheduler\PluginTask;
+use pocketmine\scheduler\Task;
 
-class UpdateTask extends PluginTask {
-	public function onRun(int $currentTick) {
+class UpdateTask extends Task {
+	public function onRun($currentTick) {
 		$this->getOwner()->update();
 	}
 }
