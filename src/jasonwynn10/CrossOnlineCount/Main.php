@@ -77,7 +77,11 @@ class Main extends PluginBase implements Listener {
 						$nametag = implode("\n", $lines);
 						$entity->setNameTag($nametag);
 					}catch(PmQueryException $e) {
-						$this->getLogger()->logException($e);
+						if($this->isPhar()) { // debug mode
+							$this->getLogger()->logException($e);
+						}else{
+							$this->getLogger()->debug($e->getMessage());
+						}
 
 						$lines = explode("\n", $entity->getNameTag());
 						$lines[0] = TextFormat::DARK_RED."Server Offline".TextFormat::WHITE;
@@ -101,6 +105,7 @@ class Main extends PluginBase implements Listener {
 		        and preg_match("/.{1,253}/", $domain_name) //overall length check
 		        and preg_match("/[^\.]{1,63}(\.[^\.]{1,63})*/", $domain_name)); //length of each label
 	}
+
 	/**
 	 * @api
 	 *
